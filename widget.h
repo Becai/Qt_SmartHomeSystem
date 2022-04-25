@@ -23,6 +23,10 @@
 #include <QAudioDeviceInfo>
 #include <QBuffer>
 
+#include <QImage>
+
+#include <string.h>
+
 namespace Ui {
 class Widget;
 }
@@ -42,14 +46,17 @@ private slots:
     //连接成功槽函数
     void succ_conn();
     //接收token值
-    void recv_token(QNetworkReply *reply);
+    void recv_audio_token(QNetworkReply *reply);
+    void recv_video_token(QNetworkReply *reply);
 
     void on_audio_btn_pressed();
 
     void on_audio_btn_released();
 
     //接收语音识别返回内容
-    void recv_audio(QNetworkReply *reply);
+    void recv_audio_msg(QNetworkReply *reply);
+    //接收人脸检测返回内容
+    void recv_video_msg(QNetworkReply *reply);
 
 private:
     Ui::Widget *ui;
@@ -61,7 +68,8 @@ private:
     QStringListModel *Model;
     QStandardItemModel *ItemModel;
     //百度云token
-    QString token;
+    QString audio_token;
+    QString video_token;
     //音频设备
     QAudioDeviceInfo m_currentDevice;
     QAudioInput *m_audioInput;
@@ -69,6 +77,9 @@ private:
 
     QString audio_msg;
 
+    //摄像头
+    double video_msg;
+    int video_flag;
 };
 
 #endif // WIDGET_H
