@@ -25,10 +25,12 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         main.cpp \
-        widget.cpp
+        widget.cpp \
+    httpermanage.cpp
 
 HEADERS += \
-        widget.h
+        widget.h \
+    httpermanage.h
 
 FORMS += \
         widget.ui
