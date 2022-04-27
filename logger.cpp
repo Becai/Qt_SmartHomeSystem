@@ -1,9 +1,6 @@
-//
-// Created by Hami Lemon on 2022/4/24.
-//
-
 #include "logger.h"
 
+#include <qdebug.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -89,12 +86,7 @@ void logger_log(const char *s_file, int s_line, log_level level, string fmt,
   }
   string msg = logger_format(s_file, s_line, level, buffer);
 
-  if (level == LOG_ERROR) {
-    // error级别输出到错误流中
-    cerr << msg << endl;
-  } else {
-    cout << msg << endl;
-  }
+  qDebug() << msg.c_str();
 }
 
 void logger_debug(const char *s_file, int s_line, string fmt, ...) {

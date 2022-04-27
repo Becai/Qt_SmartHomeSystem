@@ -2,4 +2,14 @@
     <qresource prefix="/img">
         <file>test.jpeg</file>
     </qresource>
+    <qresource prefix="/icon">
+        <file>icon/audio.png</file>
+        <file>icon/camera.png</file>
+        <file>icon/connnect.png</file>
+        <file>icon/digital.png</file>
+        <file>icon/fan.png</file>
+        <file>icon/light.png</file>
+        <file>icon/manager.png</file>
+        <file>icon/monitor.png</file>
+    </qresource>
 </RCC>

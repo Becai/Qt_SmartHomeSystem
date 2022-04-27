@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui network multimedia
+QT       += core gui network multimedia multimediawidgets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -27,16 +27,23 @@ SOURCES += \
     logger.cpp \
         main.cpp \
     manager.cpp \
+    opertion.cpp \
     request.cpp \
+    verify.cpp \
+    voice_table.cpp \
         widget.cpp
 
 HEADERS += \
     logger.h \
     manager.h \
+    operation.h \
     request.h \
+    verify.h \
+    voice_table.h \
         widget.h
 
 FORMS += \
+        verify.ui \
         widget.ui
 
 RESOURCES += \

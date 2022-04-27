@@ -56,3 +56,27 @@ QJsonObject Request::post(QString url, QJsonObject body) {
   QJsonObject json = doc.object();
   return json;
 }
+
+QJsonObject Request::post_array(QString url, QJsonArray array) {
+  QNetworkRequest request;
+  request.setUrl(QUrl(url));
+  request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+  QByteArray data = QJsonDocument(array).toJson();
+  QNetworkReply *reply = this->manager->post(request, data);
+  QEventLoop loop;
+  QObject::connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
+  loop.exec(QEventLoop::ExcludeUserInputEvents);
+  if (reply->error() != QNetworkReply::NoError) {
+    logger_error(LOGGER("post error: %s"), url.toStdString().c_str());
+  }
+
+  QByteArray replayData = reply->readAll();
+  QJsonParseError json_error;
+  QJsonDocument doc = QJsonDocument::fromJson(replayData, &json_error);
+  if (json_error.error != QJsonParseError::NoError) {
+    logger_error(LOGGER("parse json error"));
+  }
+  QJsonObject json = doc.object();
+  return json;
+}

@@ -7,7 +7,7 @@
 Manager::Manager() {}
 
 QString get_token_func(QString api_key, QString secret_key) {
-  Request *request = new Request();
+  Request request;
   QJsonObject json;
   QString url = "https://aip.baidubce.com/oauth/2.0/token";
   url.append("?grant_type=client_credentials&");
@@ -15,7 +15,7 @@ QString get_token_func(QString api_key, QString secret_key) {
   url.append(api_key);
   url.append("&client_secret=");
   url.append(secret_key);
-  QJsonObject body = request->post(url, json);
+  QJsonObject body = request.post(url, json);
   if (body.isEmpty()) {
     logger_error(LOGGER("post fail"));
     return "";
