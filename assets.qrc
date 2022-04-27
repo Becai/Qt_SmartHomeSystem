@@ -11,5 +11,7 @@
         <file>icon/light.png</file>
         <file>icon/manager.png</file>
         <file>icon/monitor.png</file>
+        <file>icon/icon.png</file>
+        <file>icon/verify.png</file>
     </qresource>
 </RCC>

@@ -12,6 +12,7 @@ Verify::Verify(QWidget *parent) : QWidget(parent), ui(new Ui::Verify) {
   camera->setViewfinder(viewfinder);
   ui->setupUi(this);
   ui->camera_layout->addWidget(viewfinder);
+  this->setWindowIcon(QIcon(":/icon/icon/verify.png"));
 
   capture->setCaptureDestination(QCameraImageCapture::CaptureToBuffer);
   camera->setCaptureMode(QCamera::CaptureStillImage);

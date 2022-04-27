@@ -14,18 +14,43 @@
 
 Widget::Widget(QWidget *parent) : QWidget(parent), ui(new Ui::Widget) {
   ui->setupUi(this);
+  this->setWindowIcon(QIcon(":/icon/icon/icon.png"));
+
   ui->labDateTime->setText("时间");
   ui->conn_btn->setText("人脸登录");
+  ui->conn_btn->setIcon(QIcon(":/icon/icon/connnect.png"));
+  ui->conn_btn->setIconSize(QSize(48, 48));
+
   ui->audio_btn->setText("语音助手");
+  ui->audio_btn->setIcon(QIcon(":/icon/icon/audio.png"));
+  ui->audio_btn->setIconSize(QSize(48, 48));
+
   ui->tem_info->setText("0");
   ui->hum_info->setText("0 %");
   ui->illu_info->setText("0 lx");
+
   ui->light_btn->setText("开灯");
+  ui->light_btn->setIcon(QIcon(":/icon/icon/light.png"));
+  ui->light_btn->setIconSize(QSize(48, 48));
+
   ui->fans_btn->setText("开风扇");
+  ui->fans_btn->setIcon(QIcon(":/icon/icon/fan.png"));
+  ui->fans_btn->setIconSize(QSize(48, 48));
+
   ui->digital_btn->setText("开数码管");
-  ui->audio_btn->setText("语音助手");
+  ui->digital_btn->setIcon(QIcon(":/icon/icon/digital.png"));
+  ui->digital_btn->setIconSize(QSize(48, 48));
+
   ui->cheese_btn->setText("拍照");
+  ui->cheese_btn->setIcon(QIcon(":/icon/icon/camera.png"));
+  ui->cheese_btn->setIconSize(QSize(48, 48));
+
   ui->auto_btn->setText("开启自动管理");
+  ui->auto_btn->setIcon(QIcon(":/icon/icon/manager.png"));
+  ui->auto_btn->setIconSize(QSize(48, 48));
+
+  ui->monitor_btn->setIcon(QIcon(":/icon/icon/monitor.png"));
+  ui->monitor_btn->setIconSize(QSize(48, 48));
 
   this->ligth_status = false;
   this->fan_status = 0;
