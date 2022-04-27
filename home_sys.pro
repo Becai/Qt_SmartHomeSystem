@@ -24,13 +24,17 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 
 SOURCES += \
+    logger.cpp \
         main.cpp \
-        widget.cpp \
-    httpermanage.cpp
+    manager.cpp \
+    request.cpp \
+        widget.cpp
 
 HEADERS += \
-        widget.h \
-    httpermanage.h
+    logger.h \
+    manager.h \
+    request.h \
+        widget.h
 
 FORMS += \
         widget.ui
