@@ -1,6 +1,7 @@
 #ifndef OPERATION_H
 #define OPERATION_H
 #include <QByteArray>
+#include <QPixmap>
 #include <QTcpSocket>
 
 //设备号
@@ -30,32 +31,34 @@ extern const uint8_t OPERATION_ZIGBEE_INFO;         //获取环境信息
 class Operation {
  public:
   Operation();
-  void light_on(QTcpSocket*);
-  void light_off(QTcpSocket*);
+  ~Operation();
+  void light_on(QTcpSocket *);
+  void light_off(QTcpSocket *);
 
-  void fan_on(QTcpSocket*);
-  void fan_off(QTcpSocket*);
-  void fan_slow(QTcpSocket*);
-  void fan_mid(QTcpSocket*);
-  void fan_fast(QTcpSocket*);
+  void fan_on(QTcpSocket *);
+  void fan_off(QTcpSocket *);
+  void fan_slow(QTcpSocket *);
+  void fan_mid(QTcpSocket *);
+  void fan_fast(QTcpSocket *);
 
-  void buzzer_on(QTcpSocket*);
-  void buzzer_off(QTcpSocket*);
+  void buzzer_on(QTcpSocket *);
+  void buzzer_off(QTcpSocket *);
 
-  void digital_on(QTcpSocket*);
-  void digital_off(QTcpSocket*);
+  void digital_on(QTcpSocket *);
+  void digital_off(QTcpSocket *);
 
-  QByteArray env_info(QTcpSocket*);
+  QByteArray env_info(QTcpSocket *);
 
-  void camera_start(QTcpSocket*);
-  void camera_stop(QTcpSocket*);
+  void camera_start(QTcpSocket *);
+  void camera_stop(QTcpSocket *);
 
-  QByteArray camera_get(QTcpSocket*);
+  QPixmap camera_get(QTcpSocket *);
 
-  void voice_play(QTcpSocket*, QString);
+  void voice_play(QTcpSocket *, QString);
 
  private:
-  void operate(QTcpSocket*, QByteArray body);
+  char *img_buf;
+  void operate(QTcpSocket *, QByteArray body);
 };
 
 #endif  // OPERATION_H

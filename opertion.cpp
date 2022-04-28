@@ -24,7 +24,14 @@ const uint8_t OPERATION_ZIGBEE_DIGITAL_ON = 0x09;   //开数码管
 const uint8_t OPERATION_ZIGBEE_DIGITAL_OFF = 0x0a;  //关数码管
 const uint8_t OPERATION_ZIGBEE_INFO = 0x0b;         //获取环境信息
 
-Operation::Operation() {}
+const size_t buf_size = 1024 * 1024;
+Operation::Operation() {
+  // 1MB
+  this->img_buf = new char[buf_size];
+  this->img_buf[0] = 0;
+}
+
+Operation::~Operation() { delete[] img_buf; }
 
 void Operation::light_on(QTcpSocket *socket) {
   QByteArray buffer;
@@ -100,7 +107,7 @@ void Operation::digital_off(QTcpSocket *socket) {
   QByteArray buffer;
   buffer.resize(2);
   buffer[0] = DEVICE_ZIGBEE;
-  buffer[1] = OPERATION_ZIGBEE_BUZZER_OFF;
+  buffer[1] = OPERATION_ZIGBEE_DIGITAL_OFF;
   this->operate(socket, buffer);
 }
 QByteArray Operation::env_info(QTcpSocket *socket) {
@@ -112,18 +119,16 @@ QByteArray Operation::env_info(QTcpSocket *socket) {
   char buf[64];
   buf[0] = 0;
   qint64 code = socket->read(buf, 64);
-  QByteArray result;
+
+  buffer.clear();
   if (code <= 0) {
-    result.resize(0);
-    return result;
+    return buffer;
   }
-  result.resize(code);
-  int index = 0;
-  //前两个字节为header
-  for (int i = 2; i < code; i++, index++) {
-    result[index] = buf[i];
+  if (buf[0] != DEVICE_ZIGBEE) {
+    return buffer;
   }
-  return result;
+  buffer.append(buf + 2, code - 2);
+  return buffer;
 }
 void Operation::camera_start(QTcpSocket *socket) {
   QByteArray buffer;
@@ -139,27 +144,24 @@ void Operation::camera_stop(QTcpSocket *socket) {
   buffer[1] = OPERATION_CAMERA_STOP;
   this->operate(socket, buffer);
 }
-QByteArray Operation::camera_get(QTcpSocket *socket) {
+QPixmap Operation::camera_get(QTcpSocket *socket) {
   QByteArray buffer;
   buffer.resize(2);
   buffer[0] = DEVICE_CAMERA;
   buffer[1] = OPERATION_CAMERA_CAPTURE;
   this->operate(socket, buffer);
 
-  char buf[64];
-  buf[0] = 0;
-  qint64 code = socket->read(buf, 64);
-  QByteArray result;
+  qint64 code = socket->read(this->img_buf, buf_size);
+  QPixmap img;
   if (code <= 0) {
-    result.resize(0);
-    return result;
+    return img;
   }
-  result.resize(code);
-  int index = 0;
-  for (int i = 2; i < code; i++, index++) {
-    result[index] = buf[i];
+  if (this->img_buf[0] != DEVICE_CAMERA) {
+    return img;
   }
-  return result;
+
+  img.loadFromData((const unsigned char *)this->img_buf + 2, code - 2);
+  return img;
 }
 
 void Operation::voice_play(QTcpSocket *socket, QString msg) {

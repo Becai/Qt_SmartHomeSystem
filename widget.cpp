@@ -2,12 +2,13 @@
 
 #include <QIcon>
 #include <QMessageBox>
+#include <sstream>
+#include <string>
 
 #include "logger.h"
 #include "manager.h"
 #include "request.h"
 #include "ui_widget.h"
-
 #define TEMP_UNIT_CHAR "℃"
 #define HUM_UNIT_CHAR "%"
 #define ILLU_UNIT_CHAR "lx"
@@ -52,23 +53,28 @@ Widget::Widget(QWidget *parent) : QWidget(parent), ui(new Ui::Widget) {
   ui->monitor_btn->setIcon(QIcon(":/icon/icon/monitor.png"));
   ui->monitor_btn->setIconSize(QSize(48, 48));
 
-  this->ligth_status = false;
+  this->light_status = false;
   this->fan_status = 0;
   this->buzzer_status = false;
   this->digital_status = false;
-  this->monitor_status = 0;
+  this->monitor_status = true;
   this->auto_status = false;
   this->verify_status = false;
+  this->env_update_flag = 33;
   //定时器：显示当前时间
   this->timer = new QTimer(this);
   connect(timer, SIGNAL(timeout()), this, SLOT(timerUpdate()));
   timer->start(1000);
 
+  this->env_timer = new QTimer(this);
+  connect(this->env_timer, SIGNAL(timeout()), this, SLOT(update_monitor()));
+  this->env_timer->start((33));
+
   //和服务端建立链接
   this->sock_client = new QTcpSocket(this);
-  //  QString host_name = "localhost";
-  //  this->sock_client->connectToHost(host_name, 8888);
-  //  connect(this->sock_client, SIGNAL(connected()), this, SLOT());
+  QString host_name = "192.168.229.128";
+  this->sock_client->connectToHost(host_name, 8888);
+  connect(this->sock_client, SIGNAL(connected()), this, SLOT(on_connect()));
 
   //连接标志位，0表示未连接
   this->conn_flag = false;
@@ -181,7 +187,62 @@ void Widget::on_audio_btn_released() {
   // todo
 }
 
-void Widget::update_monitor() {}
+void Widget::update_monitor() {
+  if (this->monitor_status) {
+    QPixmap pic = this->operation.camera_get(this->sock_client);
+    if (pic.isNull()) {
+      logger_warn(LOGGER("pic info is empty"));
+    } else {
+      //防止图片撑大控件
+      int h = this->ui->monitor_view->height() - 10;
+      int w = this->ui->monitor_view->width() - 10;
+      pic = pic.scaled(w, h);
+      this->ui->monitor_view->setPixmap(pic);
+    }
+    return;
+  }
+  if (this->env_update_flag != 33) {
+    this->env_update_flag++;
+    return;
+  }
+  //更新环境信息
+  this->env_update_flag = 0;
+  QByteArray res = this->operation.env_info(this->sock_client);
+  if (res.size() < 36) {
+    logger_warn(LOGGER("env info is empty"));
+    return;
+  }
+
+  unsigned int tem = (unsigned char)res.at(5) + (unsigned char)res.at(4);
+  QString tem_text;
+  tem_text = tem_text.asprintf("%u ℃", tem);
+  this->ui->tem_info->setText(tem_text);
+
+  unsigned int hum = (unsigned char)res.at(7) + (unsigned char)res.at(6);
+  QString hum_text;
+  hum_text = hum_text.asprintf("%u %%", hum);
+  this->ui->hum_info->setText(hum_text);
+
+  unsigned int light = (unsigned char)res.at(23) << 24;
+  light |= (unsigned char)res.at(22) << 16;
+  light |= (unsigned char)res.at(21) << 8;
+  light |= (unsigned char)res.at(20);
+  QString light_text;
+  light_text = light_text.asprintf("%u lx", light);
+  this->ui->illu_info->setText(light_text);
+
+  bool _light_status = res.at(24) == 0 ? false : true;
+  unsigned char fan_status = (unsigned char)res.at(25);
+  bool led_status = res.at(27) == 0 ? false : true;
+  if (_light_status != this->light_status) {
+    this->light_status = !_light_status;
+    this->on_light_btn_clicked();
+  }
+  if (this->digital_status != led_status) {
+    this->digital_status = !led_status;
+    this->on_digital_btn_clicked();
+  }
+}
 
 void Widget::msg_error(QString msg) {
   QMessageBox::critical(this, "错误", msg);
@@ -194,13 +255,15 @@ void Widget::msg_info(QString msg) {
 void Widget::msg_warn(QString msg) { QMessageBox::warning(this, "警告", msg); }
 
 void Widget::on_light_btn_clicked() {
-  this->ligth_status = !this->ligth_status;
-  if (this->ligth_status) {
+  this->light_status = !this->light_status;
+  if (this->light_status) {
     //开灯
     this->ui->light_btn->setText("关灯");
+    this->operation.light_on(this->sock_client);
   } else {
     //关灯
     this->ui->light_btn->setText("开灯");
+    this->operation.light_off(this->sock_client);
   }
 }
 
@@ -209,15 +272,19 @@ void Widget::on_fans_btn_clicked() {
   switch (this->fan_status) {
     case 0:
       this->ui->fans_btn->setText("风扇开");
+      this->operation.fan_off(this->sock_client);
       break;
     case 1:
       this->ui->fans_btn->setText("风扇中速");
+      this->operation.fan_on(this->sock_client);
       break;
     case 2:
       this->ui->fans_btn->setText("风扇快速");
+      this->operation.fan_mid(this->sock_client);
       break;
     case 3:
       this->ui->fans_btn->setText("风扇关");
+      this->operation.fan_fast(this->sock_client);
       break;
   }
 }
@@ -227,9 +294,11 @@ void Widget::on_digital_btn_clicked() {
   if (this->digital_status) {
     //开
     this->ui->digital_btn->setText("关数码管");
+    this->operation.digital_on(this->sock_client);
   } else {
     //关
     this->ui->digital_btn->setText("开数码管");
+    this->operation.digital_off(this->sock_client);
   }
 }
 
@@ -251,6 +320,7 @@ void Widget::on_monitor_btn_clicked() {
   this->monitor_status = !this->monitor_status;
   if (this->monitor_status) {
     this->ui->monitor_btn->setText("关闭监控");
+    //
   } else {
     this->ui->monitor_btn->setText("开启监控");
   }

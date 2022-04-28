@@ -67,6 +67,8 @@ class Widget : public QWidget {
   Ui::Widget *ui;
   Operation operation;
   QTimer *timer;
+  QTimer *env_timer;
+  int env_update_flag;
   //客户端套接字
   QTcpSocket *sock_client;
   //音频设备
@@ -78,7 +80,7 @@ class Widget : public QWidget {
   bool conn_flag;
   Manager *manager;
   //各个控件的状态
-  bool ligth_status;
+  bool light_status;
   int fan_status;
   bool buzzer_status;
   bool digital_status;
