@@ -13,5 +13,6 @@
         <file>icon/monitor.png</file>
         <file>icon/icon.png</file>
         <file>icon/verify.png</file>
+        <file>icon/alert.png</file>
     </qresource>
 </RCC>

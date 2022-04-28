@@ -1,5 +1,7 @@
 #include "widget.h"
 
+#include <synchapi.h>
+
 #include <QIcon>
 #include <QMessageBox>
 #include <sstream>
@@ -46,8 +48,8 @@ Widget::Widget(QWidget *parent) : QWidget(parent), ui(new Ui::Widget) {
   ui->cheese_btn->setIcon(QIcon(":/icon/icon/camera.png"));
   ui->cheese_btn->setIconSize(QSize(48, 48));
 
-  ui->auto_btn->setText("开启自动管理");
-  ui->auto_btn->setIcon(QIcon(":/icon/icon/manager.png"));
+  ui->auto_btn->setText("开警报");
+  ui->auto_btn->setIcon(QIcon(":/icon/icon/alert.png"));
   ui->auto_btn->setIconSize(QSize(48, 48));
 
   ui->monitor_btn->setIcon(QIcon(":/icon/icon/monitor.png"));
@@ -57,10 +59,11 @@ Widget::Widget(QWidget *parent) : QWidget(parent), ui(new Ui::Widget) {
   this->fan_status = 0;
   this->buzzer_status = false;
   this->digital_status = false;
-  this->monitor_status = true;
+  this->monitor_status = false;
   this->auto_status = false;
   this->verify_status = false;
-  this->env_update_flag = 33;
+  this->env_update_flag = 0;
+  this->audio_ok = false;
   //定时器：显示当前时间
   this->timer = new QTimer(this);
   connect(timer, SIGNAL(timeout()), this, SLOT(timerUpdate()));
@@ -68,11 +71,12 @@ Widget::Widget(QWidget *parent) : QWidget(parent), ui(new Ui::Widget) {
 
   this->env_timer = new QTimer(this);
   connect(this->env_timer, SIGNAL(timeout()), this, SLOT(update_monitor()));
-  this->env_timer->start((33));
+  // this->env_timer->start((100));
 
   //和服务端建立链接
   this->sock_client = new QTcpSocket(this);
-  QString host_name = "192.168.229.128";
+  //  QString host_name = "169.254.141.8";
+  QString host_name = "172.29.189.3";
   this->sock_client->connectToHost(host_name, 8888);
   connect(this->sock_client, SIGNAL(connected()), this, SLOT(on_connect()));
 
@@ -89,7 +93,7 @@ Widget::Widget(QWidget *parent) : QWidget(parent), ui(new Ui::Widget) {
 
   this->verify.face_token = this->manager->face_token;
   //认证成功信号
-  connect(&(this->verify), SIGNAL(verify_ok()), this, SLOT(on_connect()));
+  connect(&(this->verify), SIGNAL(verify_ok()), this, SLOT(on_verify_ok()));
   //获取音频设备源文件
   const auto &&availableDevices =
       QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
@@ -108,11 +112,20 @@ Widget::Widget(QWidget *parent) : QWidget(parent), ui(new Ui::Widget) {
 }
 
 Widget::~Widget() {
+  delete env_timer;
   delete sock_client;
   delete timer;
   delete m_audioInput;
   delete manager;
   delete ui;
+}
+
+void Widget::on_verify_ok() {
+  logger_debug(LOGGER("认证成功"));
+  this->verify_status = true;
+  this->env_timer->start(100);
+  this->operation.voice_play(this->sock_client, "欢迎回来，主人");
+  this->ui->conn_btn->setText("欢迎回来");
 }
 
 //实时显示时间
@@ -122,12 +135,12 @@ void Widget::timerUpdate() {
   ui->labDateTime->setText(str);
 }
 
-//连接服务器按钮
+//人脸认证
 void Widget::on_conn_btn_clicked() {
   if (!this->conn_flag) {
     logger_error(LOGGER("未连接服务器"));
     msg_error("未连接服务器");
-    //    return;
+    return;
   }
   if (this->verify_status) {
     return;
@@ -145,12 +158,21 @@ void Widget::on_connect() {
 
 //语音助手按钮
 void Widget::on_audio_btn_pressed() {
+  if (!this->conn_flag || !this->verify_status) {
+    msg_error("未连接服务器");
+    return;
+  }
   m_buffer = new QBuffer;
   m_buffer->open(QIODevice::ReadWrite);
   m_audioInput->start(m_buffer);
+  this->audio_ok = true;
 }
 
 void Widget::on_audio_btn_released() {
+  if (!audio_ok) {
+    return;
+  }
+  audio_ok = false;
   m_audioInput->stop();
   const auto &sendData = m_buffer->data();
   m_buffer->deleteLater();
@@ -180,11 +202,40 @@ void Widget::on_audio_btn_released() {
     return;
   }
   QJsonArray result = response.value("result").toArray();
-  for (int i = 0; i < result.size(); i++) {
-    QJsonValue value = result.at(i);
-    logger_debug(LOGGER("%s"), value.toString().toStdString().c_str());
-  }
   // todo
+  QString value = result.at(0).toString();
+  qDebug() << value.toStdString().c_str() << endl;
+  QString table_value = this->table.query(value);
+  if (!table_value.isEmpty()) {
+    this->operation.voice_play(this->sock_client, table_value);
+    logger_debug(LOGGER("voice play:%s"), table_value.toStdString().c_str());
+    return;
+  }
+  if (value.contains("开灯")) {
+    this->operation.light_on(this->sock_client);
+    this->light_status = true;
+  } else if (value.contains("关灯")) {
+    this->operation.light_off(this->sock_client);
+    this->light_status = false;
+  } else if (value.contains("开风扇")) {
+    this->operation.fan_on(this->sock_client);
+    this->fan_status = 1;
+  } else if (value.contains("关风扇")) {
+    this->operation.fan_off(this->sock_client);
+    this->fan_status = 0;
+  } else if (value.contains("开数码管")) {
+    this->operation.digital_on(this->sock_client);
+    this->digital_status = true;
+  } else if (value.contains("关数码管")) {
+    this->operation.digital_off(this->sock_client);
+    this->digital_status = false;
+  } else if (value.contains("开警报")) {
+    this->operation.buzzer_on(this->sock_client);
+  } else if (value.contains("关警报")) {
+    this->operation.buzzer_off(this->sock_client);
+  } else if (!value.isEmpty()) {
+    this->operation.voice_play(this->sock_client, "我没听懂哦");
+  }
 }
 
 void Widget::update_monitor() {
@@ -199,24 +250,29 @@ void Widget::update_monitor() {
       pic = pic.scaled(w, h);
       this->ui->monitor_view->setPixmap(pic);
     }
-    return;
   }
-  if (this->env_update_flag != 33) {
+  if (this->env_update_flag != 0) {
     this->env_update_flag++;
+    this->env_update_flag %= 10;
     return;
   }
+  this->env_update_flag++;
   //更新环境信息
-  this->env_update_flag = 0;
   QByteArray res = this->operation.env_info(this->sock_client);
   if (res.size() < 36) {
     logger_warn(LOGGER("env info is empty"));
     return;
   }
 
-  unsigned int tem = (unsigned char)res.at(5) + (unsigned char)res.at(4);
+  unsigned int tem = (unsigned char)res.at(5);
+  unsigned int tem1 = (unsigned char)res.at(4);
   QString tem_text;
-  tem_text = tem_text.asprintf("%u ℃", tem);
+  tem_text = tem_text.asprintf("%u.%u ℃", tem, tem1);
   this->ui->tem_info->setText(tem_text);
+  //  if (this->auto_status && tem >= 26) {
+  //    const char data[2] = {0x02, 0x04};
+  //    this->sock_client->write(data, 2);
+  //  }
 
   unsigned int hum = (unsigned char)res.at(7) + (unsigned char)res.at(6);
   QString hum_text;
@@ -230,18 +286,10 @@ void Widget::update_monitor() {
   QString light_text;
   light_text = light_text.asprintf("%u lx", light);
   this->ui->illu_info->setText(light_text);
-
-  bool _light_status = res.at(24) == 0 ? false : true;
-  unsigned char fan_status = (unsigned char)res.at(25);
-  bool led_status = res.at(27) == 0 ? false : true;
-  if (_light_status != this->light_status) {
-    this->light_status = !_light_status;
-    this->on_light_btn_clicked();
-  }
-  if (this->digital_status != led_status) {
-    this->digital_status = !led_status;
-    this->on_digital_btn_clicked();
-  }
+  //  if (this->auto_status && light <= 200) {
+  //    const char data[2] = {0x02, 0x00};
+  //    this->sock_client->write(data, 2);
+  //  }
 }
 
 void Widget::msg_error(QString msg) {
@@ -255,6 +303,10 @@ void Widget::msg_info(QString msg) {
 void Widget::msg_warn(QString msg) { QMessageBox::warning(this, "警告", msg); }
 
 void Widget::on_light_btn_clicked() {
+  if (!this->conn_flag || !this->verify_status) {
+    msg_error("未连接服务器");
+    return;
+  }
   this->light_status = !this->light_status;
   if (this->light_status) {
     //开灯
@@ -268,6 +320,10 @@ void Widget::on_light_btn_clicked() {
 }
 
 void Widget::on_fans_btn_clicked() {
+  if (!this->conn_flag || !this->verify_status) {
+    msg_error("未连接服务器");
+    return;
+  }
   this->fan_status = (this->fan_status + 1) % 4;
   switch (this->fan_status) {
     case 0:
@@ -290,6 +346,10 @@ void Widget::on_fans_btn_clicked() {
 }
 
 void Widget::on_digital_btn_clicked() {
+  if (!this->conn_flag || !this->verify_status) {
+    msg_error("未连接服务器");
+    return;
+  }
   this->digital_status = !this->digital_status;
   if (this->digital_status) {
     //开
@@ -302,18 +362,53 @@ void Widget::on_digital_btn_clicked() {
   }
 }
 
-void Widget::on_cheese_btn_clicked() { logger_debug(LOGGER("拍照")); }
+void Widget::on_cheese_btn_clicked() {
+  if (!this->conn_flag || !this->verify_status) {
+    msg_error("未连接服务器");
+    return;
+  }
+  logger_debug(LOGGER("拍照"));
+  if (this->monitor_status) {
+    const QPixmap *pic = this->ui->monitor_view->pixmap();
+    pic->save("pic.jpg");
+    msg_info("拍照成功");
+  } else {
+    QPixmap pic = this->operation.camera_get(this->sock_client);
+    if (pic.isNull()) {
+      msg_error("拍照失败");
+      return;
+    }
+    pic.save("pic.jpg");
+  }
+  this->operation.voice_play(this->sock_client, "拍好了捏");
+}
 
 void Widget::on_auto_btn_clicked() {
+  if (!this->conn_flag || !this->verify_status) {
+    msg_error("未连接服务器");
+    return;
+  }
   this->auto_status = !this->auto_status;
   if (this->auto_status) {
-    this->ui->auto_btn->setText("关闭自动管理");
+    this->ui->auto_btn->setText("关警报");
+    //    this->ui->light_btn->setDisabled(true);
+    //    this->ui->fans_btn->setDisabled(true);
+    //    this->ui->digital_btn->setDisabled(true);
+    this->operation.buzzer_on(this->sock_client);
   } else {
-    this->ui->auto_btn->setText("开启自动管理");
+    this->ui->auto_btn->setText("开警报");
+    //    this->ui->light_btn->setDisabled(false);
+    //    this->ui->fans_btn->setDisabled(false);
+    //    this->ui->digital_btn->setDisabled(false);
+    this->operation.buzzer_off(this->sock_client);
   }
 }
 
 void Widget::on_monitor_btn_clicked() {
+  if (!this->conn_flag || !this->verify_status) {
+    msg_error("未连接服务器");
+    return;
+  }
   bool ok = this == verify.parent();
   qDebug() << verify.parent() << endl;
   qDebug() << ok << endl;
@@ -331,4 +426,5 @@ void Widget::closeEvent(QCloseEvent *) {
   if (this->sock_client != nullptr) {
     this->sock_client->close();
   }
+  this->env_timer->stop();
 }

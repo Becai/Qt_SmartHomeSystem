@@ -1,5 +1,7 @@
-#include "operation.h"
+#include <QMutex>
 
+#include "logger.h"
+#include "operation.h"
 //设备号
 const uint8_t DEVICE_VOICE = 0;   // 语音模块
 const uint8_t DEVICE_CAMERA = 1;  //相机模块
@@ -166,14 +168,19 @@ QPixmap Operation::camera_get(QTcpSocket *socket) {
 
 void Operation::voice_play(QTcpSocket *socket, QString msg) {
   QByteArray buffer;
-  buffer.resize(3 + msg.size());
+  QByteArray utf8 = msg.toUtf8();
   buffer[0] = DEVICE_VOICE;
   buffer[1] = OPERATION_VOICE_PLAY;
-  buffer[3] = 0x02;  //内容为utf8编码
-  buffer.append(msg.toUtf8());
+  buffer[2] = 0x02;  //内容为utf8编码
+  int index = 3;
+  for (int i = 0; i < utf8.size() && utf8.at(i) != '\0'; i++, index++) {
+    buffer[index] = (unsigned char)utf8[i];
+  }
   this->operate(socket, buffer);
 }
 
 void Operation::operate(QTcpSocket *socket, QByteArray body) {
+  mutex.lock();
   socket->write(body);
+  mutex.unlock();
 }

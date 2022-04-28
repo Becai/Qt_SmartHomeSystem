@@ -56,7 +56,7 @@ void Verify::capture_pic(int, QImage image) {
       this->face_token;
   Request request;
   QJsonObject response = request.post_array(url, JsonArray);
-  qDebug() << QJsonDocument(response).toJson().toStdString().c_str() << endl;
+
   if (response.isEmpty()) {
     logger_error(LOGGER("request verify fail"));
     QMessageBox::critical(this, "错误", "出现异常");

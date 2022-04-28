@@ -1,6 +1,7 @@
 #ifndef OPERATION_H
 #define OPERATION_H
 #include <QByteArray>
+#include <QMutex>
 #include <QPixmap>
 #include <QTcpSocket>
 
@@ -58,6 +59,7 @@ class Operation {
 
  private:
   char *img_buf;
+  QMutex mutex;
   void operate(QTcpSocket *, QByteArray body);
 };
 

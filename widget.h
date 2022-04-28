@@ -46,6 +46,8 @@ class Widget : public QWidget {
   void on_conn_btn_clicked();
   //连接成功槽函数
   void on_connect();
+  //认证成功
+  void on_verify_ok();
 
   void on_audio_btn_pressed();
 
@@ -90,6 +92,7 @@ class Widget : public QWidget {
   VoiceTable table;
   Verify verify;
   bool verify_status;  //是否已经认证
+  bool audio_ok;
 
  private:
   //信息弹框
